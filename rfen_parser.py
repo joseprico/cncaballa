@@ -246,7 +246,7 @@ def parse_partidos(url):
 
 def parse_clasificacion():
     """Parseja la classificació"""
-    url = f"{CLASIFICACION_URL}/{GRUPO_ID}/clasificacion/"
+    url = f"https://rfen.es/especialidades/waterpolo/competicion/1510/resultados/4963/clasificacion/"
     print(f"📥 Descarregant classificació: {url}")
     
     try:
