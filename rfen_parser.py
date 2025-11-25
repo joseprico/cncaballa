@@ -241,13 +241,49 @@ def parse_partidos(url):
             matches.append(match_data)
     
     return matches
-
+def parse_clasificacion():
+    """Parseja la classificació"""
+    url = f"https://rfen.es/especialidades/waterpolo/grupo/2485/clasificacion/"
+    print(f"📥 Descarregant classificació: {url}")
+    
+    html = fetch_page(url)
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    clasificacion = []
+    
+    # Buscar la taula de classificació
+    rows = soup.find_all('tr')
+    
+    for row in rows:
+        cells = row.find_all('td')
+        if len(cells) >= 9:
+            try:
+                team_name_elem = cells[1].find('a')
+                team_name = team_name_elem.get_text(strip=True) if team_name_elem else cells[1].get_text(strip=True)
+                
+                clasificacion.append({
+                    'position': cells[0].get_text(strip=True),
+                    'team': team_name,
+                    'played': int(cells[2].get_text(strip=True) or 0),
+                    'won': int(cells[3].get_text(strip=True) or 0),
+                    'drawn': int(cells[4].get_text(strip=True) or 0),
+                    'lost': int(cells[5].get_text(strip=True) or 0),
+                    'goals_for': int(cells[6].get_text(strip=True) or 0),
+                    'goals_against': int(cells[7].get_text(strip=True) or 0),
+                    'points': int(cells[8].get_text(strip=True) or 0)
+                })
+            except Exception as e:
+                print(f"⚠️ Error parsejant fila: {e}")
+    
+    return clasificacion
+    
 def main():
     print("🏊 Parser RFEN per CN Caballa v1.2")
     print("=" * 50)
     
     # Últims partits
     ultimos = parse_partidos(f"{BASE_URL}/{TEAM_ID}/ultimos-partidos/")
+    clasificacion = parse_clasificacion()
     
     # Pròxims partits
     proximos = parse_partidos(f"{BASE_URL}/{TEAM_ID}/proximos-partidos/")
@@ -278,6 +314,7 @@ def main():
         "last_updated": datetime.now().isoformat(),
         "ultimos_partidos": ultimos,
         "proximos_partidos": proximos,
+        "clasificacion": clasificacion,
         "locations": POOL_LOCATIONS
     }
     
