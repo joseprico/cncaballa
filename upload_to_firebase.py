@@ -103,7 +103,8 @@ def main():
                 print(f"\n🏆 CN Caballa:")
                 print(f"   Posició: {caballa['position']}ª")
                 print(f"   Punts: {caballa['points']}")
-                print(f"   {caballa['won']}V - {caballa['drawn']}E - {caballa['lost']}D")
+                print(f"   {caballa['won']}V - {caballa['lost']}D")
+                print(f"   GF: {caballa['goals_for']} - GC: {caballa['goals_against']}")
         
     except Exception as e:
         print(f"❌ Error pujant a Firebase: {e}")
