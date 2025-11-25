@@ -1,1 +1,41 @@
+name: 🏊 Update RFEN Data
 
+on:
+  # Executar cada 4 hores
+  schedule:
+    - cron: '0 */4 * * *'
+  
+  # Permetre execució manual
+  workflow_dispatch:
+
+jobs:
+  update-rfen:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests beautifulsoup4 firebase-admin
+      
+      - name: 🌐 Run RFEN parser
+        run: |
+          python rfen_parser.py
+      
+      - name: 🔥 Upload to Firebase
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          python upload_to_firebase.py
+      
+      - name: 📊 Show results
+        run: |
+          echo "✅ Sincronització completada!"
+          cat rfen_caballa_data.json | head -50
