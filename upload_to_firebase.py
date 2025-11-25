@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Puja les dades RFEN a Firebase Realtime Database
+Versió 1.1 - Amb classificació
 """
 
 import firebase_admin
@@ -30,7 +31,7 @@ def normalize_data(data):
         return data
 
 def main():
-    print("🔥 Pujant dades a Firebase...")
+    print("🔥 Pujant dades RFEN a Firebase...")
     
     # Obtenir credencials del secret de GitHub Actions
     cred_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
@@ -56,7 +57,15 @@ def main():
     try:
         with open('rfen_caballa_data.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-        print(f"✅ Llegides dades: {len(data.get('ultimos_partidos', []))} últims, {len(data.get('proximos_partidos', []))} pròxims")
+        
+        ultimos_count = len(data.get('ultimos_partidos', []))
+        proximos_count = len(data.get('proximos_partidos', []))
+        clasificacion_count = len(data.get('clasificacion', []))
+        
+        print(f"✅ Llegides dades:")
+        print(f"   • {ultimos_count} últims partits")
+        print(f"   • {proximos_count} pròxims partits")
+        print(f"   • {clasificacion_count} equips a la classificació")
         
     except FileNotFoundError:
         print("❌ Error: No s'ha trobat rfen_caballa_data.json")
@@ -80,10 +89,21 @@ def main():
         sync_ref = db.reference('rfen_sync')
         sync_ref.set({
             'last_sync': datetime.now().isoformat(),
-            'ultimos_count': len(data.get('ultimos_partidos', [])),
-            'proximos_count': len(data.get('proximos_partidos', []))
+            'ultimos_count': ultimos_count,
+            'proximos_count': proximos_count,
+            'clasificacion_count': clasificacion_count
         })
         print("✅ Timestamp actualitzat")
+        
+        # Mostrar resum de la classificació
+        if clasificacion_count > 0:
+            clasificacion = data.get('clasificacion', [])
+            caballa = next((t for t in clasificacion if 'caballa' in t.get('team', '').lower() or 'ceuta' in t.get('team', '').lower()), None)
+            if caballa:
+                print(f"\n🏆 CN Caballa:")
+                print(f"   Posició: {caballa['position']}ª")
+                print(f"   Punts: {caballa['points']}")
+                print(f"   {caballa['won']}V - {caballa['drawn']}E - {caballa['lost']}D")
         
     except Exception as e:
         print(f"❌ Error pujant a Firebase: {e}")

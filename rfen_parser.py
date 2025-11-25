@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Parser RFEN per CN Caballa
-Extreu partits passats i futurs de la web de la RFEN
-Versió 1.2 - Correcció pròxims partits sense resultats
+Extreu partits passats, futurs i classificació de la RFEN
+Versió 1.3 - Amb classificació
 """
 
 import requests
@@ -16,7 +16,9 @@ import re
 # ============================================
 TEAM_ID = "14488"  # CN Caballa
 TEAM_NAME = "C.n. Caballa - Ciudad De Ceuta"
+GRUPO_ID = "2485"  # Grupo de la lliga
 BASE_URL = "https://rfen.es/especialidades/waterpolo/equipo"
+CLASIFICACION_URL = "https://rfen.es/especialidades/waterpolo/grupo"
 
 # Ubicacions de piscines (coordenades de Google Maps)
 POOL_LOCATIONS = {
@@ -241,55 +243,77 @@ def parse_partidos(url):
             matches.append(match_data)
     
     return matches
+
 def parse_clasificacion():
     """Parseja la classificació"""
-    url = f"https://rfen.es/especialidades/waterpolo/competicion/1510/resultados/4963/clasificacion/"
+    url = f"{CLASIFICACION_URL}/{GRUPO_ID}/clasificacion/"
     print(f"📥 Descarregant classificació: {url}")
     
-    html = fetch_page(url)
-    soup = BeautifulSoup(html, 'html.parser')
-    
-    clasificacion = []
-    
-    # Buscar la taula de classificació
-    rows = soup.find_all('tr')
-    
-    for row in rows:
-        cells = row.find_all('td')
-        if len(cells) >= 9:
-            try:
-                team_name_elem = cells[1].find('a')
-                team_name = team_name_elem.get_text(strip=True) if team_name_elem else cells[1].get_text(strip=True)
-                
-                clasificacion.append({
-                    'position': cells[0].get_text(strip=True),
-                    'team': team_name,
-                    'played': int(cells[2].get_text(strip=True) or 0),
-                    'won': int(cells[3].get_text(strip=True) or 0),
-                    'drawn': int(cells[4].get_text(strip=True) or 0),
-                    'lost': int(cells[5].get_text(strip=True) or 0),
-                    'goals_for': int(cells[6].get_text(strip=True) or 0),
-                    'goals_against': int(cells[7].get_text(strip=True) or 0),
-                    'points': int(cells[8].get_text(strip=True) or 0)
-                })
-            except Exception as e:
-                print(f"⚠️ Error parsejant fila: {e}")
-    
-    return clasificacion
-    
+    try:
+        html = fetch_page(url)
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        clasificacion = []
+        
+        # Buscar taula de classificació
+        table = soup.find('table')
+        if not table:
+            print("⚠️ No s'ha trobat la taula de classificació")
+            return []
+        
+        rows = table.find_all('tr')[1:]  # Saltar capçalera
+        
+        for row in rows:
+            cells = row.find_all('td')
+            if len(cells) >= 9:
+                try:
+                    # Nom de l'equip
+                    team_cell = cells[1]
+                    team_link = team_cell.find('a')
+                    team_name = team_link.get_text(strip=True) if team_link else team_cell.get_text(strip=True)
+                    
+                    # Logo de l'equip
+                    img = team_cell.find('img')
+                    team_logo = img.get('src') if img else ""
+                    
+                    clasificacion.append({
+                        'position': cells[0].get_text(strip=True),
+                        'team': team_name,
+                        'logo': team_logo,
+                        'played': int(cells[2].get_text(strip=True) or 0),
+                        'won': int(cells[3].get_text(strip=True) or 0),
+                        'drawn': int(cells[4].get_text(strip=True) or 0),
+                        'lost': int(cells[5].get_text(strip=True) or 0),
+                        'goals_for': int(cells[6].get_text(strip=True) or 0),
+                        'goals_against': int(cells[7].get_text(strip=True) or 0),
+                        'points': int(cells[8].get_text(strip=True) or 0)
+                    })
+                except Exception as e:
+                    print(f"⚠️ Error parsejant fila classificació: {e}")
+        
+        print(f"✅ Classificació: {len(clasificacion)} equips")
+        return clasificacion
+        
+    except Exception as e:
+        print(f"❌ Error obtenint classificació: {e}")
+        return []
+
 def main():
-    print("🏊 Parser RFEN per CN Caballa v1.2")
+    print("🏊 Parser RFEN per CN Caballa v1.3")
     print("=" * 50)
     
     # Últims partits
     ultimos = parse_partidos(f"{BASE_URL}/{TEAM_ID}/ultimos-partidos/")
-    clasificacion = parse_clasificacion()
     
     # Pròxims partits
     proximos = parse_partidos(f"{BASE_URL}/{TEAM_ID}/proximos-partidos/")
     
+    # Classificació
+    clasificacion = parse_clasificacion()
+    
     print(f"\n✅ Últims partits: {len(ultimos)}")
     print(f"✅ Pròxims partits: {len(proximos)}")
+    print(f"✅ Equips classificació: {len(clasificacion)}")
     
     # Mostrar resum
     print("\n📊 ÚLTIMS PARTITS:")
@@ -307,10 +331,19 @@ def main():
         home_marker = "🏠" if m['is_home'] else "✈️"
         print(f"   {home_marker} J{m['jornada']}: {local['name']} vs {away['name']} - {m['date']}")
     
+    # Mostrar posició a la classificació
+    caballa = next((t for t in clasificacion if 'caballa' in t['team'].lower() or 'ceuta' in t['team'].lower()), None)
+    if caballa:
+        print(f"\n🏆 CLASSIFICACIÓ:")
+        print(f"   Posició: {caballa['position']}ª")
+        print(f"   Punts: {caballa['points']}")
+        print(f"   {caballa['won']}V - {caballa['drawn']}E - {caballa['lost']}D")
+    
     # Generar JSON
     output = {
         "team": TEAM_NAME,
         "team_id": TEAM_ID,
+        "grupo_id": GRUPO_ID,
         "last_updated": datetime.now().isoformat(),
         "ultimos_partidos": ultimos,
         "proximos_partidos": proximos,
