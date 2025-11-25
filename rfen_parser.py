@@ -2,7 +2,7 @@
 """
 Parser RFEN per CN Caballa
 Extreu partits passats i futurs de la web de la RFEN
-Versió 1.1
+Versió 1.2 - Correcció pròxims partits sense resultats
 """
 
 import requests
@@ -98,6 +98,13 @@ def fetch_page(url):
     response.raise_for_status()
     return response.text
 
+def safe_int(elem):
+    """Converteix un element a int si és possible, sinó retorna 0"""
+    if not elem:
+        return 0
+    text = elem.get_text(strip=True)
+    return int(text) if text and text.isdigit() else 0
+
 def parse_match_block(block):
     """Parseja un bloc de partit"""
     try:
@@ -125,15 +132,16 @@ def parse_match_block(block):
         if len(teams) < 2:
             return None
         
-        # Equip local
+        # ========== EQUIP LOCAL ==========
         local_name_elem = teams[0].find('div', class_='RFEN_MatchRowName')
         local_name = local_name_elem.get_text(strip=True) if local_name_elem else ""
         local_logo = teams[0].find('img', class_='RFEN_MatchRowImage')
         local_logo_url = local_logo.get('src') if local_logo else ""
         
-        # Resultat local
+        # Resultat local (pot estar buit per futurs partits)
         local_result_elem = teams[0].find('div', class_='RFEN_MatchRowResultFinal')
-        local_score = int(local_result_elem.get_text(strip=True)) if local_result_elem else None
+        local_score_text = local_result_elem.get_text(strip=True) if local_result_elem else ""
+        local_score = int(local_score_text) if local_score_text and local_score_text.isdigit() else None
         
         # Parcials local
         local_p1 = teams[0].find('div', class_='RFEN_MatchRowResultP1')
@@ -142,13 +150,13 @@ def parse_match_block(block):
         local_p4 = teams[0].find('div', class_='RFEN_MatchRowResultP4')
         
         local_quarters = {
-            'q1': int(local_p1.get_text(strip=True)) if local_p1 else 0,
-            'q2': int(local_p2.get_text(strip=True)) if local_p2 else 0,
-            'q3': int(local_p3.get_text(strip=True)) if local_p3 else 0,
-            'q4': int(local_p4.get_text(strip=True)) if local_p4 else 0
+            'q1': safe_int(local_p1),
+            'q2': safe_int(local_p2),
+            'q3': safe_int(local_p3),
+            'q4': safe_int(local_p4)
         }
         
-        # Equip visitant
+        # ========== EQUIP VISITANT ==========
         away_name_elem = teams[1].find('div', class_='RFEN_MatchRowName')
         away_name = away_name_elem.get_text(strip=True) if away_name_elem else ""
         away_logo = teams[1].find('img', class_='RFEN_MatchRowImage')
@@ -156,7 +164,8 @@ def parse_match_block(block):
         
         # Resultat visitant
         away_result_elem = teams[1].find('div', class_='RFEN_MatchRowResultFinal')
-        away_score = int(away_result_elem.get_text(strip=True)) if away_result_elem else None
+        away_score_text = away_result_elem.get_text(strip=True) if away_result_elem else ""
+        away_score = int(away_score_text) if away_score_text and away_score_text.isdigit() else None
         
         # Parcials visitant
         away_p1 = teams[1].find('div', class_='RFEN_MatchRowResultP1')
@@ -165,10 +174,10 @@ def parse_match_block(block):
         away_p4 = teams[1].find('div', class_='RFEN_MatchRowResultP4')
         
         away_quarters = {
-            'q1': int(away_p1.get_text(strip=True)) if away_p1 else 0,
-            'q2': int(away_p2.get_text(strip=True)) if away_p2 else 0,
-            'q3': int(away_p3.get_text(strip=True)) if away_p3 else 0,
-            'q4': int(away_p4.get_text(strip=True)) if away_p4 else 0
+            'q1': safe_int(away_p1),
+            'q2': safe_int(away_p2),
+            'q3': safe_int(away_p3),
+            'q4': safe_int(away_p4)
         }
         
         # Determinar si CN Caballa és local o visitant
@@ -200,6 +209,8 @@ def parse_match_block(block):
         
     except Exception as e:
         print(f"⚠️ Error parsejant bloc: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def get_location(team_name):
@@ -232,7 +243,7 @@ def parse_partidos(url):
     return matches
 
 def main():
-    print("🏊 Parser RFEN per CN Caballa v1.1")
+    print("🏊 Parser RFEN per CN Caballa v1.2")
     print("=" * 50)
     
     # Últims partits
