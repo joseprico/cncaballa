@@ -243,7 +243,7 @@ def parse_partidos(url):
     return matches
 def parse_clasificacion():
     """Parseja la classificació"""
-    url = f"https://rfen.es/especialidades/waterpolo/grupo/2485/clasificacion/"
+    url = f"https://rfen.es/especialidades/waterpolo/competicion/1510/resultados/4963/clasificacion/"
     print(f"📥 Descarregant classificació: {url}")
     
     html = fetch_page(url)
