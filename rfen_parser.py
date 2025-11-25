@@ -246,7 +246,7 @@ def parse_partidos(url):
 
 def parse_clasificacion():
     """Parseja la classificació"""
-    url = f"https://rfen.es/especialidades/waterpolo/competicion/1510/resultados/4963/clasificacion/"
+    url = "https://rfen.es/especialidades/waterpolo/competicion/1510/resultados/4963/clasificacion/"
     print(f"📥 Descarregant classificació: {url}")
     
     try:
@@ -255,47 +255,69 @@ def parse_clasificacion():
         
         clasificacion = []
         
-        # Buscar taula de classificació
-        table = soup.find('table')
-        if not table:
-            print("⚠️ No s'ha trobat la taula de classificació")
+        # Buscar el contenidor de la taula
+        table_body = soup.find('div', class_='RFEN_TableBody')
+        if not table_body:
+            print("⚠️ No s'ha trobat RFEN_TableBody")
             return []
         
-        rows = table.find_all('tr')[1:]  # Saltar capçalera
+        # Buscar totes les files
+        rows = table_body.find_all('div', class_='RFEN_TableBodyRow')
+        print(f"   Trobades {len(rows)} files")
         
         for row in rows:
-            cells = row.find_all('td')
-            if len(cells) >= 9:
-                try:
-                    # Nom de l'equip
-                    team_cell = cells[1]
-                    team_link = team_cell.find('a')
-                    team_name = team_link.get_text(strip=True) if team_link else team_cell.get_text(strip=True)
-                    
-                    # Logo de l'equip
-                    img = team_cell.find('img')
-                    team_logo = img.get('src') if img else ""
-                    
+            try:
+                # Buscar totes les columnes
+                columns = row.find_all('div', class_='RFEN_TableBodyColumn')
+                
+                # Posició (primer div amb id)
+                position_elem = row.find('div', id='RFEN_TableColumn_clasificationPosition')
+                position = position_elem.get_text(strip=True) if position_elem else ""
+                
+                # Nom de l'equip (dins de l'enllaç)
+                name_link = row.find('a')
+                if name_link:
+                    name_elem = name_link.find('div', id='RFEN_TableColumn_clasificationName')
+                    team_name = name_elem.get_text(strip=True) if name_elem else ""
+                    team_url = name_link.get('href', '')
+                else:
+                    team_name = ""
+                    team_url = ""
+                
+                # Logo (buscar img dins de l'enllaç o a la fila)
+                img = row.find('img')
+                team_logo = img.get('src') if img else ""
+                
+                # Les dades estan als divs amb classe RFEN_TableColumn_clasificationMeta
+                meta_columns = row.find_all('div', class_='RFEN_TableColumn_clasificationMeta')
+                
+                if len(meta_columns) >= 9:
                     clasificacion.append({
-                        'position': cells[0].get_text(strip=True),
+                        'position': position,
                         'team': team_name,
                         'logo': team_logo,
-                        'played': int(cells[2].get_text(strip=True) or 0),
-                        'won': int(cells[3].get_text(strip=True) or 0),
-                        'drawn': int(cells[4].get_text(strip=True) or 0),
-                        'lost': int(cells[5].get_text(strip=True) or 0),
-                        'goals_for': int(cells[6].get_text(strip=True) or 0),
-                        'goals_against': int(cells[7].get_text(strip=True) or 0),
-                        'points': int(cells[8].get_text(strip=True) or 0)
+                        'team_url': team_url,
+                        'points': int(meta_columns[0].get_text(strip=True) or 0),      # P
+                        'played': int(meta_columns[1].get_text(strip=True) or 0),      # PJ
+                        'won': int(meta_columns[2].get_text(strip=True) or 0),         # PG
+                        'lost': int(meta_columns[3].get_text(strip=True) or 0),        # PP
+                        'won_penalties': int(meta_columns[4].get_text(strip=True) or 0),  # PGP
+                        'lost_penalties': int(meta_columns[5].get_text(strip=True) or 0), # PPP
+                        'goals_for': int(meta_columns[6].get_text(strip=True) or 0),   # GF
+                        'goals_against': int(meta_columns[7].get_text(strip=True) or 0), # GC
+                        'goal_diff': int(meta_columns[8].get_text(strip=True) or 0)    # DG
                     })
-                except Exception as e:
-                    print(f"⚠️ Error parsejant fila classificació: {e}")
+                    
+            except Exception as e:
+                print(f"⚠️ Error parsejant fila classificació: {e}")
         
         print(f"✅ Classificació: {len(clasificacion)} equips")
         return clasificacion
         
     except Exception as e:
         print(f"❌ Error obtenint classificació: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def main():
