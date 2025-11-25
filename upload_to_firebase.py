@@ -8,6 +8,26 @@ from firebase_admin import credentials, db
 import json
 import os
 from datetime import datetime
+import re
+
+def normalize_key(key):
+    """Normalitza una clau per Firebase (sense . $ # [ ] /)"""
+    # Eliminar caràcters no permesos
+    normalized = re.sub(r'[.$#\[\]/]', '_', key)
+    # Eliminar espais múltiples i guions baixos consecutius
+    normalized = re.sub(r'[_\s]+', '_', normalized)
+    # Eliminar guions baixos al principi i final
+    normalized = normalized.strip('_')
+    return normalized
+
+def normalize_data(data):
+    """Normalitza recursivament totes les claus d'un diccionari"""
+    if isinstance(data, dict):
+        return {normalize_key(k): normalize_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [normalize_data(item) for item in data]
+    else:
+        return data
 
 def main():
     print("🔥 Pujant dades a Firebase...")
@@ -46,10 +66,14 @@ def main():
         print(f"❌ Error llegint JSON: {e}")
         exit(1)
     
+    # Normalitzar les dades per Firebase
+    print("🔧 Normalitzant claus per Firebase...")
+    data_normalized = normalize_data(data)
+    
     # Pujar a Firebase
     try:
         ref = db.reference('rfen_data')
-        ref.set(data)
+        ref.set(data_normalized)
         print("✅ Dades pujades a Firebase correctament!")
         
         # Actualitzar timestamp de l'última sincronització
@@ -63,6 +87,8 @@ def main():
         
     except Exception as e:
         print(f"❌ Error pujant a Firebase: {e}")
+        import traceback
+        traceback.print_exc()
         exit(1)
     
     print("\n🎉 Sincronització completada!")
