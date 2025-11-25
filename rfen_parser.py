@@ -359,7 +359,8 @@ def main():
         print(f"\n🏆 CLASSIFICACIÓ:")
         print(f"   Posició: {caballa['position']}ª")
         print(f"   Punts: {caballa['points']}")
-        print(f"   {caballa['won']}V - {caballa['drawn']}E - {caballa['lost']}D")
+        print(f"   {caballa['won']}V - {caballa['lost']}D")
+        print(f"   GF: {caballa['goals_for']} - GC: {caballa['goals_against']}")
     
     # Generar JSON
     output = {
